@@ -1,0 +1,47 @@
+<div class='alert alert-info text-center' style='font-size:1rem;background-color:white;border-color:lightgrey;'>
+    <%- quota = simple_format `hpcs` -%>
+    <%- quota_split = quota.split(" ") -%>
+    <%- homedir = quota_split[34] -%>
+    <%- home_usage = quota_split[35].gsub(",", "") -%>
+    <%- home_limit = quota_split[37].gsub(",", "") -%>
+    <%- home_status = quota_split[38] -%>
+    <%- hpctmpdir = quota_split[63] -%>
+    <%- hpctmp_usage = quota_split[64].gsub(",", "") -%>
+    <%- hpctmp_limit = quota_split[65].gsub(",", "") -%>
+    <%- hpctmp_status = quota_split[66] -%>
+    <p style='color:black;'>
+        <span style='font-size:1.5rem;font-weight:bold;'>
+            Disk Quota
+	    </span>
+	    <br>
+	    <br>
+	    <span style='float:left;'>
+	        Output generated: <%= Time.now.in_time_zone('Asia/Singapore') %>
+	    </span>
+	    <span style='float:right;'>
+	        Refresh page to see updated quotas
+	    </span>
+    </p>
+    <table class='table table-bordered table-striped table-sm' style='background-color:white;border-color:lightgrey;'>
+        <thead class="thead-dark">
+            <tr>
+                <th style="font-weight: bold;">Filesystem</th>
+                <th style="font-weight: bold;">Usage</th>
+                <th style="font-weight: bold;">Limit</th>
+                <th style="font-weight: bold;">Status</th>
+            </tr>
+        </thead>
+        <tr>
+            <td><%= homedir %></td>
+            <td><%= home_usage %></td>
+            <td><%= home_limit %></td>
+            <td><%= home_status %></td>
+        </tr>
+        <tr>
+            <td><%= hpctmpdir %></td>
+            <td><%= hpctmp_usage %></td>
+            <td><%= hpctmp_limit %></td>
+            <td><%= hpctmp_status %></td>
+        </tr>
+    </table>
+</div>
