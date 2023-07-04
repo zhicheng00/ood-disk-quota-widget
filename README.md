@@ -1,2 +1,3 @@
-# ood-disk-quota-widget
-Open OnDemand Widget that displays disk quota information
+# Open OnDemand Disk Quota Widget
+
+Displays disk quota information, customised for NUS HPC
