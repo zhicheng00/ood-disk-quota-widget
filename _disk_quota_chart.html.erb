@@ -1,0 +1,312 @@
+<%- quota = simple_format `/home/svu/e0775105/bin/hpcs` -%>
+<%- quota_split = quota.split(" ") -%>
+<%- homedir = quota_split[34] -%>
+<%- home_usage = quota_split[35].gsub(",", "") -%>
+<%- home_limit = quota_split[37].gsub(",", "") -%>
+<%- home_status_used = quota_split[38].gsub("%", "").to_f -%>
+<%- home_status_avail = 100 - quota_split[38].gsub("%", "").to_f -%>
+<%- hpctmpdir = quota_split[63] -%>
+<%- hpctmp_usage = quota_split[64].gsub(",", "") -%>
+<%- hpctmp_limit = quota_split[65].gsub(",", "") -%>
+<%- hpctmp_status_used = quota_split[66].gsub("%", "").to_f -%>
+<%- hpctmp_status_avail = 100 - quota_split[66].gsub("%", "").to_f -%>
+
+<div class='alert alert-info text-center' style='font-size:1rem;background-color:white;border-color:lightgrey;'>
+    <p style='color:black;'>
+        <span style='font-size:1.5rem;font-weight:bold;'>
+            Disk Quota
+	    </span>
+	    <br>
+	    <br>
+	    <span style='float:left;'>
+	        Output generated: <%= Time.now.in_time_zone('Asia/Singapore') %>
+	    </span>
+	    <span style='float:right;'>
+	        Refresh page to see updated quotas
+	    </span>
+    </p>
+    <style>
+    div#canvas {
+        display: inline;
+    }
+    </style>
+    <div class="container" id="canvas" for="myCanvas">
+        <div class="row">
+            <div class="col">
+                <canvas id="myCanvas1"></canvas>
+            </div>
+            <div class="col">
+                <canvas id="myCanvas2"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+var myCanvas1 = document.getElementById("myCanvas1");
+myCanvas1.width = 300;
+myCanvas1.height = 340;
+
+var myCanvas2 = document.getElementById("myCanvas2");
+myCanvas2.width = 300;
+myCanvas2.height = 340;
+
+var ctx1 = myCanvas1.getContext("2d");
+
+var ctx2 = myCanvas2.getContext("2d");
+
+function drawLine(ctx, startX, startY, endX, endY, color) {
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(startX, startY);
+  ctx.lineTo(endX, endY);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawArc(ctx, centerX, centerY, radius, startAngle, endAngle, color) {
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, radius, startAngle, endAngle);
+  ctx.restore();
+}
+
+function drawPieSlice(
+  ctx,
+  centerX,
+  centerY,
+  radius,
+  startAngle,
+  endAngle,
+  fillColor,
+  strokeColor
+) {
+  ctx.save();
+  ctx.fillStyle = fillColor;
+  ctx.strokeStyle = strokeColor;
+  ctx.beginPath();
+  ctx.moveTo(centerX, centerY);
+  ctx.arc(centerX, centerY, radius, startAngle, endAngle);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
+class PieChart {
+  constructor(options) {
+    this.options = options;
+    this.canvas = options.canvas;
+    this.ctx = this.canvas.getContext("2d");
+    this.colors = options.colors;
+    this.titleOptions = options.titleOptions;
+    this.totalValue = 100;
+    this.radius = Math.min(this.canvas.width / 2, this.canvas.height / 2) - options.padding;
+  }
+
+  drawSlices() {
+    var colorIndex = 0;
+    var startAngle = -Math.PI / 2;
+
+    for (var categ in this.options.data) {
+      var val = this.options.data[categ];
+      var sliceAngle = (2 * Math.PI * val) / this.totalValue;
+
+      drawPieSlice(
+        this.ctx,
+        this.canvas.width / 2,
+        this.canvas.height / 2,
+        this.radius,
+        startAngle,
+        startAngle + sliceAngle,
+        this.colors[colorIndex % this.colors.length]
+      );
+
+      startAngle += sliceAngle;
+      colorIndex++;
+    }
+
+    if (this.options.doughnutHoleSize) {
+      drawPieSlice(
+        this.ctx,
+        this.canvas.width / 2,
+        this.canvas.height / 2,
+        this.options.doughnutHoleSize * this.radius,
+        0,
+        2 * Math.PI,
+        "#FFF",
+        "#FFF"
+      );
+
+      drawArc(
+        this.ctx,
+        this.canvas.width / 2,
+        this.canvas.height / 2,
+        this.options.doughnutHoleSize * this.radius,
+        0,
+        2 * Math.PI,
+        "#000"
+      );
+    }
+  }
+
+  drawLabels() {
+    var colorIndex = 0;
+    var startAngle = -Math.PI / 2;
+    if (this.options.doughnutHoleSize) {
+      labelX = this.canvas.width / 2;
+      labelY = this.canvas.height / 2;
+      
+      var val = this.options.data["Used"];
+      var statusText = Math.round((100 * val) / this.totalValue);
+      var usageText = this.options.rawData["Usage"];
+      var limitText = this.options.rawData["Limit"];
+      this.ctx.textAlign = "center";
+      this.ctx.fillStyle = "black";
+      this.ctx.font = "48px Arial";
+      this.ctx.fillText(statusText + "%", labelX, labelY);
+      this.ctx.font = "16px Arial";
+      this.ctx.fillText(usageText + " of " + limitText + " used", labelX, labelY + 30);
+    }
+    if (!this.options.doughnutHoleSize) {
+      for (var categ in this.options.data) {
+        var val = this.options.data[categ];
+        var sliceAngle = (2 * Math.PI * val) / this.totalValue;
+        var labelX =
+          this.canvas.width / 2 +
+          (this.radius / 2) * Math.cos(startAngle + sliceAngle / 2);
+        var labelY =
+          this.canvas.height / 2 +
+          (this.radius / 2) * Math.sin(startAngle + sliceAngle / 2);
+
+        var labelText = Math.round((100 * val) / this.totalValue);
+        this.ctx.fillStyle = "black";
+        this.ctx.font = "32px Arial";
+        this.ctx.fillText(labelText + "%", labelX, labelY);
+        startAngle += sliceAngle;
+      }
+    }
+  }
+
+  drawTitle() {
+    this.ctx.save();
+
+    this.ctx.textBaseline = "bottom";
+    this.ctx.textAlign = this.titleOptions.align;
+    this.ctx.fillStyle = this.titleOptions.fill;
+    this.ctx.font = `${this.titleOptions.font.weight} ${this.titleOptions.font.size} ${this.titleOptions.font.family}`;
+
+    let xPos = this.canvas.width / 2;
+
+    if (this.titleOptions.align == "left") {
+      xPos = 10;
+    }
+    if (this.titleOptions.align == "right") {
+      xPos = this.canvas.width - 10;
+    }
+
+    this.ctx.fillText(this.options.seriesName, xPos, this.canvas.height);
+
+    this.ctx.restore();
+  }
+
+  drawLegend() {
+    let pIndex = 0;
+    let legend = document.querySelector("div[for='myCanvas']");
+    let ul = document.createElement("ul");
+    legend.append(ul);
+
+    for (let ctg of Object.keys(this.options.data)) {
+      let li = document.createElement("li");
+      li.style.listStyle = "none";
+      li.style.borderLeft =
+        "20px solid " + this.colors[pIndex % this.colors.length];
+      li.style.padding = "5px";
+      li.textContent = ctg;
+      ul.append(li);
+      pIndex++;
+    }
+  }
+
+  draw() {
+    this.drawSlices();
+    this.drawLabels();
+    this.drawTitle();
+  }
+}
+
+var home_chart = new PieChart({
+  canvas: myCanvas1,
+  seriesName: "<%= homedir %>",
+  padding: 10,
+  data: {
+    "Used": "<%= home_status_used %>",
+    "Available": "<%= home_status_avail %>"
+  },
+  rawData: {
+    "Usage": "<%= home_usage %>",
+    "Limit": "<%= home_limit %>"
+  },
+  colors: ["#FFDDDD", "#F1F1F1"],
+  doughnutHoleSize: 0.8,
+  titleOptions: {
+    align: "center",
+    fill: "black",
+    font: {
+      weight: "bold",
+      size: "18px",
+      family: "Arial"
+    }
+  }
+});
+
+var hpctmp_chart = new PieChart({
+  canvas: myCanvas2,
+  seriesName: "<%= hpctmpdir %>",
+  padding: 10,
+  data: {
+    "Used": "<%= hpctmp_status_used %>",
+    "Available": "<%= hpctmp_status_avail %>"
+  },
+  rawData: {
+    "Usage": "<%= hpctmp_usage %>",
+    "Limit": "<%= hpctmp_limit %>"
+  },
+  colors: ["#FFDDDD", "#F1F1F1"],
+  doughnutHoleSize: 0.8,
+  titleOptions: {
+    align: "center",
+    fill: "black",
+    font: {
+      weight: "bold",
+      size: "18px",
+      family: "Arial"
+    }
+  }
+});
+
+if (<%= home_status_used %>) {
+  home_chart.draw();
+} else {
+  ctx1.textAlign = "center";
+  ctx1.fillStyle = "black";
+  ctx1.font = "20px Arial";
+  ctx1.fillText("No data available", myCanvas1.width / 2, myCanvas1.height / 2);
+  ctx1.textBaseline = "bottom";
+  ctx1.font = "bold 18px Arial";
+  ctx1.fillText("<%= homedir %>", myCanvas1.width / 2, myCanvas1.height);
+}
+
+if (<%= hpctmp_status_used %>) {
+  hpctmp_chart.draw();
+} else {
+  ctx2.textAlign = "center";
+  ctx2.fillStyle = "black";
+  ctx2.font = "20px Arial";
+  ctx2.fillText("No data available", myCanvas2.width / 2, myCanvas2.height / 2);
+  ctx2.textBaseline = "bottom";
+  ctx2.font = "bold 18px Arial";
+  ctx2.fillText("<%= hpctmpdir %>", myCanvas2.width / 2, myCanvas2.height);
+}
+</script>
